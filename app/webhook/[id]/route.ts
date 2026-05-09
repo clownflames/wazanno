@@ -24,22 +24,21 @@ import { eq } from "drizzle-orm"
 /* =========================
    WEBHOOK VERIFICATION
 ========================= */
-
 export async function GET(
     req: NextRequest,
     {
         params
     }: {
-        params: {
+        params: Promise<{
             id: string
-        }
+        }>
     }
-) {
+){
 
     try {
-
+        const { id } = await params
         const accountId =
-            Number(params.id)
+            Number(id)
 
         // Find WhatsApp account
         const accounts =
@@ -141,22 +140,22 @@ export async function GET(
 /* =========================
    RECEIVE WEBHOOK EVENTS
 ========================= */
-
 export async function POST(
     req: NextRequest,
     {
         params
     }: {
-        params: {
+        params: Promise<{
             id: string
-        }
+        }>
     }
 ) {
 
     try {
 
+        const { id } = await params
         const accountId =
-            Number(params.id)
+            Number(id)
 
         // Find account
         const accounts =
