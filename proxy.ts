@@ -1,73 +1,187 @@
-import { NextRequest, NextResponse } from "next/server"
+import {
+    NextRequest,
+    NextResponse
+} from "next/server"
+
 import jwt from "jsonwebtoken"
+
+
+
+
+
+/* =========================
+   PUBLIC ROUTES
+========================= */
 
 const PUBLIC_ROUTES = [
     "/login",
     "/register"
 ]
 
-export async function proxy(req: NextRequest) {
 
-    const token = req.cookies.get("token")?.value
 
-    const pathname = req.nextUrl.pathname
 
-    // Check public routes
-    const isPublicRoute = PUBLIC_ROUTES.includes(pathname)
 
-    // No token
-    if (!token) {
+/* =========================
+   PUBLIC PREFIXES
+========================= */
 
-        // User trying protected route
-        if (!isPublicRoute) {
-            return NextResponse.redirect(
-                new URL("/login", req.url)
-            )
-        }
+const PUBLIC_PREFIXES = [
 
-        return NextResponse.next()
-    }
+    // Meta webhooks
+    "/webhook",
+
+    // Public APIs if needed
+    "/api/public"
+]
+
+
+
+
+
+/* =========================
+   MIDDLEWARE
+========================= */
+
+export async function proxy(
+    req: NextRequest
+) {
 
     try {
 
-        // Verify JWT
+        const pathname =
+            req.nextUrl.pathname
+
+        const token =
+            req.cookies.get("token")
+                ?.value
+
+        // Check public route
+        const isPublicRoute =
+
+            PUBLIC_ROUTES.includes(
+                pathname
+            ) ||
+
+            PUBLIC_PREFIXES.some(
+                (route) =>
+                    pathname.startsWith(
+                        route
+                    )
+            )
+
+
+
+
+
+        /* =========================
+           NO TOKEN
+        ========================= */
+
+        if (!token) {
+
+            // Allow public routes
+            if (isPublicRoute) {
+                return NextResponse.next()
+            }
+
+            // Redirect protected routes
+            return NextResponse.redirect(
+                new URL(
+                    "/login",
+                    req.url
+                )
+            )
+        }
+
+
+
+
+
+        /* =========================
+           VERIFY JWT
+        ========================= */
+
         jwt.verify(
             token,
             process.env.JWT_SECRET!
         )
 
-        // Logged in user opening login/register
-        if (isPublicRoute) {
+
+
+
+
+        /* =========================
+           BLOCK LOGIN/REGISTER
+           WHEN ALREADY LOGGED IN
+        ========================= */
+
+        if (
+            pathname === "/login" ||
+            pathname === "/register"
+        ) {
+
             return NextResponse.redirect(
-                new URL("/dashboard", req.url)
+                new URL(
+                    "/dashboard",
+                    req.url
+                )
             )
         }
+
+
+
+
+
+        /* =========================
+           ALLOW REQUEST
+        ========================= */
 
         return NextResponse.next()
 
     } catch (error) {
 
-        // Invalid token
-        const response = NextResponse.redirect(
-            new URL("/login", req.url)
+        console.error(
+            "MIDDLEWARE ERROR:",
+            error
         )
-        // response.headers.set("id")
 
-        response.cookies.delete("token")
+        // Remove invalid token
+        const response =
+            NextResponse.redirect(
+                new URL(
+                    "/login",
+                    req.url
+                )
+            )
+
+        response.cookies.delete(
+            "token"
+        )
 
         return response
     }
 }
 
+
+
+
+
+/* =========================
+   MATCHER
+========================= */
+
 export const config = {
     matcher: [
+
         /*
-         * Match all request paths except:
+         * Ignore:
          * - api
-         * - _next/static
-         * - _next/image
-         * - favicon.ico
+         * - static files
+         * - next internals
+         * - favicon
          */
+
         "/((?!api|_next/static|_next/image|favicon.ico).*)",
     ],
 }
