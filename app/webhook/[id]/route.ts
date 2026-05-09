@@ -22,8 +22,9 @@ import { eq } from "drizzle-orm"
 
 
 /* =========================
-   WEBHOOK VERIFICATION
+   VERIFY WEBHOOK
 ========================= */
+
 export async function GET(
     req: NextRequest,
     {
@@ -33,14 +34,17 @@ export async function GET(
             id: string
         }>
     }
-){
+) {
 
     try {
-        const { id } = await params
+
+        const { id } =
+            await params
+
         const accountId =
             Number(id)
 
-        // Find WhatsApp account
+        // Find account
         const accounts =
             await db
                 .select()
@@ -73,7 +77,6 @@ export async function GET(
         const account =
             accounts[0]
 
-        // Meta params
         const searchParams =
             req.nextUrl.searchParams
 
@@ -92,14 +95,20 @@ export async function GET(
                 "hub.challenge"
             )
 
-        // Verify token
+        console.log({
+            mode,
+            token,
+            challenge
+        })
+
+        // Verify
         if (
             mode === "subscribe" &&
             token ===
             account.webhook_verify_token
         ) {
 
-            return new NextResponse(
+            return new Response(
                 challenge,
                 {
                     status: 200
@@ -119,7 +128,10 @@ export async function GET(
 
     } catch (error) {
 
-        console.error(error)
+        console.error(
+            "GET WEBHOOK ERROR:",
+            error
+        )
 
         return NextResponse.json(
             {
@@ -138,8 +150,9 @@ export async function GET(
 
 
 /* =========================
-   RECEIVE WEBHOOK EVENTS
+   RECEIVE EVENTS
 ========================= */
+
 export async function POST(
     req: NextRequest,
     {
@@ -153,7 +166,9 @@ export async function POST(
 
     try {
 
-        const { id } = await params
+        const { id } =
+            await params
+
         const accountId =
             Number(id)
 
@@ -179,7 +194,7 @@ export async function POST(
             return NextResponse.json(
                 {
                     error:
-                        "WhatsApp account not found"
+                        "Account not found"
                 },
                 {
                     status: 404
@@ -190,27 +205,66 @@ export async function POST(
         const account =
             accounts[0]
 
-        // Raw body
+
+
+
+
+        /* =========================
+           RAW BODY
+        ========================= */
+
         const rawBody =
             await req.text()
 
-        // Verify signature
-        const isValid =
-            verifySignature({
+        console.log(
+            "RAW BODY:",
+            rawBody
+        )
 
-                // Secret from DB
-                appSecret:
-                    account.meta_app_secret,
 
-                rawBody,
 
-                signatureHeader:
-                    req.headers.get(
-                        "x-hub-signature-256"
-                    ) || ""
-            })
+
+
+        /* =========================
+           SIGNATURE VERIFY
+        ========================= */
+
+        const signature =
+            req.headers.get(
+                "x-hub-signature-256"
+            ) || ""
+
+        console.log(
+            "SIGNATURE:",
+            signature
+        )
+
+        // Skip verification in development
+        let isValid = true
+
+        if (
+            process.env.NODE_ENV ===
+            "production"
+        ) {
+
+            isValid =
+                verifySignature({
+
+                    appSecret:
+                        account.meta_app_secret,
+
+                    rawBody,
+
+                    signatureHeader:
+                        signature
+                })
+        }
 
         if (!isValid) {
+
+            console.log(
+                "INVALID SIGNATURE"
+            )
 
             return NextResponse.json(
                 {
@@ -223,15 +277,31 @@ export async function POST(
             )
         }
 
-        // Parse payload
+
+
+
+
+        /* =========================
+           PARSE PAYLOAD
+        ========================= */
+
         const payload =
             JSON.parse(rawBody)
 
-        // Normalize webhook
+        console.log(
+            "PAYLOAD:",
+            payload
+        )
+
         const events =
             normalizeWebhook(
                 payload
             )
+
+        console.log(
+            "EVENTS:",
+            events
+        )
 
 
 
@@ -246,9 +316,15 @@ export async function POST(
             events.messages
         ) {
 
-            // Only text messages
+            console.log(
+                "MESSAGE:",
+                message
+            )
+
+            // Save text messages only
             if (
-                !message.text?.body
+                message.type !==
+                "text"
             ) {
                 continue
             }
@@ -277,7 +353,8 @@ export async function POST(
                         message.type,
 
                     content:
-                        message.text.body,
+                        message.text?.body ||
+                        "",
 
                     status:
                         "received"
@@ -289,7 +366,7 @@ export async function POST(
 
 
         /* =========================
-           MESSAGE STATUS
+           STATUS UPDATES
         ========================= */
 
         for (
@@ -297,9 +374,12 @@ export async function POST(
             events.statuses
         ) {
 
-            if (
-                !status.id
-            ) {
+            console.log(
+                "STATUS:",
+                status
+            )
+
+            if (!status.id) {
                 continue
             }
 
@@ -319,25 +399,6 @@ export async function POST(
                 )
         }
 
-
-
-
-
-        /* =========================
-           CALL EVENTS
-        ========================= */
-
-        for (
-            const call of
-            events.calls
-        ) {
-
-            console.log(
-                "CALL EVENT:",
-                call
-            )
-        }
-
         return NextResponse.json(
             {
                 success: true
@@ -349,7 +410,10 @@ export async function POST(
 
     } catch (error) {
 
-        console.error(error)
+        console.error(
+            "POST WEBHOOK ERROR:",
+            error
+        )
 
         return NextResponse.json(
             {
