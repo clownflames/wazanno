@@ -155,6 +155,72 @@ export const messagesTable = pgTable(
         }).default("sent"),
 
         created_at: timestamp()
+            .defaultNow(),
+
+
+             // Media related fields
+        media_id: varchar({
+            length: 255
+        }), // Meta media ID
+        
+        media_url: text(), // URL to fetch media
+        
+        media_type: varchar({
+            length: 50
+        }), // image, video, audio, document, etc.
+        
+        mime_type: varchar({
+            length: 100
+        }), // image/jpeg, video/mp4, etc.
+        
+        caption: text(), // Caption for media
+        
+        filename: varchar({
+            length: 255
+        }), // Original filename for documents
+        
+        // Location data
+        latitude: varchar({
+            length: 50
+        }),
+        
+        longitude: varchar({
+            length: 50
+        }),
+        
+        location_name: text(),
+        location_address: text(),
+        
+        // Contact data
+        contact_name: varchar({
+            length: 255
+        }),
+        contact_phone: varchar({
+            length: 50
+        }),
+        
+        // Interactive/Reaction data
+        interactive_data: text(), // JSON string
+        reaction_emoji: varchar({
+            length: 10
+        }),
+        reacts_to_message_id: varchar({
+            length: 255
+        }),
+        
+        // System/Order data
+        system_data: text(),
+        order_data: text(),
+        
+        updated_at: timestamp()
             .defaultNow()
+
+
+
+
+
+
+
+
     }
 )

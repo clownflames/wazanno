@@ -8,6 +8,13 @@
       "when": 1778312160904,
       "tag": "0000_thankful_riptide",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1778317614468,
+      "tag": "0001_outgoing_thor",
+      "breakpoints": true
     }
   ]
 }
