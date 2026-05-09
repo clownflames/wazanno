@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1778312160904,
+      "tag": "0000_thankful_riptide",
+      "breakpoints": true
+    }
+  ]
+}
